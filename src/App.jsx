@@ -6,6 +6,8 @@ import All from './Components/All'
 
 function App() {
 
+  const [searchTerm,setSearchTerm] = useState("")
+
   return (
     <>
 
@@ -13,9 +15,9 @@ function App() {
         
         < Navbar  />
 
-        < Hero />
+        < Hero searchTerm={searchTerm} setSearchTerm={setSearchTerm} />
 
-        <All />
+        <All searchTerm={searchTerm} />
 
 
       </div>
