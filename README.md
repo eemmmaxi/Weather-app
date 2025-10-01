@@ -30,3 +30,47 @@ Users should be able to:
 
 
 
+
+
+
+
+
+### Built with
+
+- Semantic HTML5 Markup
+- Tailwind Css for styling
+- Reactjs 
+- large screen- for default
+- Responsive on smaller screens
+
+
+
+[What I learned](#what-i-learned)
+
+Using grid-cols rather than flex is better for many same sized boxes
+
+<div className="grid grid-cols-5 max-sm:grid-cols-2 gap-4">
+    <div></div>
+    <div></div>
+    <div></div>
+    <div></div>
+    <div></div>
+</div>
+
+
+There are math built in functions in react that are very hand like the Math.round() , new.Date()
+
+Math.round(weather.current.temperature_2m) for rounding off numbers
+
+new Date().toLocaleDateString("en-US", {
+                    weekday: "long",
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric",
+                  })   for getting time and information about 
+the time and day and render it in different formats
+
+
+
+
+
