@@ -29,15 +29,21 @@ const All = ( { searchTerm , temp , winds , prec } ) => {
   const [error, setError] = useState("");
 
 
-    const fetchWeather = async () => {
-      setLoading(true);
-      setError("");
-      try {
-        // Step 1: Geocode city -> lat/lon
+   // ✅ Fetch weather function (your original)
+    const fetchWeather = async (latitude, longitude, customLocation = null) => {
+    setLoading(true);
+    setError("");
+    try {
+      let lat = latitude;
+      let lon = longitude;
+      let name, country;
+
+      // ✅ If latitude/longitude not provided -> searchTerm lookup
+      if (!lat || !lon) {
         const geoRes = await fetch(
-        `${import.meta.env.VITE_GEO_API}?name=${encodeURIComponent(
-          searchTerm
-        )}&count=1&language=en&format=json`
+          `${import.meta.env.VITE_GEO_API}?name=${encodeURIComponent(
+            searchTerm
+          )}&count=1&language=en&format=json`
         );
 
         const geoData = await geoRes.json();
@@ -48,11 +54,15 @@ const All = ( { searchTerm , temp , winds , prec } ) => {
           return;
         }
 
-        const { latitude, longitude, name, country } = geoData.results[0];
+        ({ latitude: lat, longitude: lon, name, country } = geoData.results[0]);
+      } else if (customLocation) {
+        // If called by geolocation
+        name = customLocation.name;
+        country = customLocation.country;
+      }
 
-        // Step 2: Fetch weather data
-
-        const url = `${import.meta.env.VITE_WEATHER_API}?latitude=${latitude}&longitude=${longitude}` +
+      const url =
+        `${import.meta.env.VITE_WEATHER_API}?latitude=${lat}&longitude=${lon}` +
         `&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,wind_speed_10m,weathercode` +
         `&hourly=temperature_2m,weathercode` +
         `&daily=temperature_2m_max,temperature_2m_min,weathercode` +
@@ -62,30 +72,74 @@ const All = ( { searchTerm , temp , winds , prec } ) => {
         `&forecast_days=7` +
         `&timezone=auto`;
 
+      const weatherRes = await fetch(url);
+      const weatherData = await weatherRes.json();
 
-        const weatherRes = await fetch(url);
+      const updatedWeather = {
+        ...weatherData,
+        location: { name, country, latitude: lat, longitude: lon },
+      };
 
-        const weatherData = await weatherRes.json();
+      setWeather(updatedWeather);
+    } catch (err) {
+      setError("Failed to fetch weather.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-        // ✅ Combine weather + location info
-        const updatedWeather = {
-          ...weatherData,
-          location: { name, country, latitude, longitude },
-        };
+  // ✅ Automatically fetch on first visit (geolocation)
+  useEffect(() => {
+    const stored = localStorage.getItem("userCoords");
+    if (stored) {
+      const { latitude, longitude } = JSON.parse(stored);
+      fetchWeather(latitude, longitude);
+      return;
+    }
 
-        setWeather(updatedWeather);
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        async (pos) => {
+          const { latitude, longitude } = pos.coords;
 
-      } catch (err) {
-        setError("Failed to fetch weather.");
-      } finally {
-        setLoading(false);
-      }
-    };
+          // Save coords so it won’t ask again next time
+          localStorage.setItem(
+            "userCoords",
+            JSON.stringify({ latitude, longitude })
+          );
 
-// ✅ Log whenever state actually updates
-   useEffect(() => {
-    fetchWeather();
-  }, [searchTerm,temp,winds,prec]);
+          // Fetch location name (optional via reverse geocoding)
+          try {
+            const res = await fetch(
+              `${import.meta.env.VITE_GEO_API}?latitude=${latitude}&longitude=${longitude}&count=1&language=en&format=json`
+            );
+            const data = await res.json();
+            const locationInfo =
+              data.results && data.results[0]
+                ? { name: data.results[0].name, country: data.results[0].country }
+                : { name: "Your location", country: "" };
+
+            fetchWeather(latitude, longitude, locationInfo);
+          } catch {
+            fetchWeather(latitude, longitude);
+          }
+        },
+        (err) => {
+          if (err.code === 1)
+            setError("Location permission denied. Please search manually.");
+        }
+      );
+    } else {
+      setError("Geolocation not supported by your browser.");
+    }
+  }, []);
+
+  // ✅ Refetch when user changes settings or searches manually
+  useEffect(() => {
+    if (searchTerm) {
+      fetchWeather();
+    }
+  }, [searchTerm, temp, winds, prec]);
 
   const weatherImages = {
   0: sunny,       // clear sky
